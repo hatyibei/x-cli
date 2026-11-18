@@ -81,6 +81,8 @@ export interface RequestOptions {
   auth?: boolean;
   /** Send `x-client-transaction-id`. Default true for x.com/api.x.com requests. */
   transactionId?: boolean;
+  /** Continuation of an action already paced as a write (media chunks): use the normal gap. */
+  continuation?: boolean;
 }
 
 export interface GraphqlOptions {
@@ -313,7 +315,7 @@ export class XClient {
       body = new URLSearchParams(opts.form).toString();
     }
 
-    await this.throttle(method !== "GET");
+    await this.throttle(method !== "GET" && !opts.continuation);
     debug(`request: ${method} ${url.host}${url.pathname}`);
     const res = await this.fetchImpl(url, { method, headers, body, redirect: "manual" });
     debug(`response: ${res.status}`);

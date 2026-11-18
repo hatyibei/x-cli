@@ -65,7 +65,8 @@ x-cli post "本文" --dry-run                     # 投稿せずに確認
 x-cli post --file thread.md                     # `---` だけの行でスレッドに分割（--no-thread で無効）
 x-cli post "本文" --media a.png --alt "説明"     # 画像は最大 4 枚
 x-cli post "本文" --reply-to <id|URL>  /  --quote <id|URL>
-x-cli post "本文" --schedule 2026-11-20T09:00:00+09:00   # 予約投稿（X 側で廃止されている可能性あり）
+x-cli post "本文" --schedule 2026-11-20T09:00:00+09:00   # 予約投稿（1 件のみ）
+x-cli scheduled   /   x-cli unschedule <予約 id>   # 予約の一覧 / 取り消し
 x-cli delete <id|URL>
 
 # 交流

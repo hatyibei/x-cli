@@ -44,7 +44,9 @@ x-cli post - < draft.md                    # text from stdin
 x-cli post "<text>" --media a.png --alt "description" --media b.jpg --alt "..."   # up to 4 images, or 1 GIF/video; media goes on the first post
 x-cli post "<text>" --reply-to <id|url>    # reply
 x-cli post "<text>" --quote <id|url>       # quote post
-x-cli post "<text>" --schedule 2026-11-20T09:00:00+09:00   # scheduled post (single post only; best effort, X may have removed this from the web client)
+x-cli post "<text>" --schedule 2026-11-20T09:00:00+09:00   # scheduled post (single post only); prints the scheduled id
+x-cli scheduled                            # list scheduled posts
+x-cli unschedule <scheduled_id>            # cancel one
 x-cli delete <id|url>                      # delete your post (ask first)
 ```
 

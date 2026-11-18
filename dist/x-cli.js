@@ -877,7 +877,7 @@ class XClient {
       headers["Content-Type"] = "application/x-www-form-urlencoded";
       body = new URLSearchParams(opts.form).toString();
     }
-    await this.throttle(method !== "GET");
+    await this.throttle(method !== "GET" && !opts.continuation);
     debug(`request: ${method} ${url.host}${url.pathname}`);
     const res = await this.fetchImpl(url, { method, headers, body, redirect: "manual" });
     debug(`response: ${res.status}`);
@@ -1422,14 +1422,36 @@ async function createTweet(client, p) {
   return { id, url: `https://x.com/i/status/${id}` };
 }
 async function scheduleTweet(client, text, at, mediaIds = []) {
-  const data = await client.graphql(["CreateScheduledTweet"], {
-    post_tweet_request: { auto_populate_reply_metadata: false, status: text, exclude_reply_user_ids: [], media_ids: mediaIds },
-    execute_at: Math.floor(at.getTime() / 1000)
-  });
-  const id = data?.data?.tweet?.rest_id ?? data?.data?.create_scheduled_tweet?.rest_id ?? data?.data?.createScheduledTweet?.rest_id;
+  const post_tweet_request = { status: text };
+  if (mediaIds.length)
+    Object.assign(post_tweet_request, { media_ids: mediaIds, possibly_sensitive: false });
+  const data = await client.graphql(["scheduleTweetCreateMutation", "CreateScheduledTweet"], { post_tweet_request, execute_at: Math.floor(at.getTime() / 1000) });
+  const d = data?.data ?? {};
+  const id = d.scheduledtweet_v2_insert?.rest_id ?? d.tweet?.rest_id ?? d.create_scheduled_tweet?.rest_id ?? d.createScheduledTweet?.rest_id;
   if (!id)
     throw new CliError("API_ERROR", "X did not confirm the scheduled post. Check x.com's scheduled posts before retrying.", { detail: data });
-  return { ok: true, scheduledAt: at.toISOString(), id };
+  return { ok: true, scheduledAt: at.toISOString(), id: String(id) };
+}
+async function scheduledTweets(client) {
+  const data = await client.graphql(["scheduledPostsQuery", "FetchScheduledTweets"], {});
+  const list = data?.data?.viewer_v2?.scheduled_tweet_list ?? data?.data?.viewer?.scheduled_tweet_list ?? [];
+  return {
+    items: list.map((x) => ({
+      id: String(x.rest_id),
+      executeAt: typeof x.scheduling_info?.execute_at === "number" ? new Date(x.scheduling_info.execute_at).toISOString() : undefined,
+      state: x.scheduling_info?.state,
+      text: x.tweet_create_request?.status ?? "",
+      mediaIds: x.tweet_create_request?.media_ids
+    }))
+  };
+}
+async function unscheduleTweet(client, id) {
+  const data = await client.graphql(["deleteScheduledTweetMutation", "DeleteScheduledTweet"], { scheduled_tweet_id: id });
+  const d = data?.data ?? {};
+  const result = Object.values(d)[0];
+  if (result !== undefined && result !== "Done" && result !== true)
+    throw new CliError("API_ERROR", "X did not confirm cancelling the scheduled post.", { detail: data });
+  return { ok: true, id, unscheduled: true };
 }
 async function deleteTweet(client, id) {
   await client.graphql(["DeleteTweet", "deleteTweetMutation"], { tweet_id: id, dark_request: false });
@@ -1483,9 +1505,9 @@ async function uploadMedia(client, path, altText) {
   for (let i = 0, seg = 0;i < buf.length; i += CHUNK, seg++) {
     const form = new FormData;
     form.append("media", new Blob([buf.subarray(i, i + CHUNK)]), basename(path));
-    await client.request(UPLOAD_URL, { method: "POST", query: { command: "APPEND", media_id: mediaId, segment_index: seg }, form, transactionId: false });
+    await client.request(UPLOAD_URL, { method: "POST", query: { command: "APPEND", media_id: mediaId, segment_index: seg }, form, transactionId: false, continuation: true });
   }
-  let fin = await client.request(UPLOAD_URL, { method: "POST", query: { command: "FINALIZE", media_id: mediaId, allow_async: true }, transactionId: false });
+  let fin = await client.request(UPLOAD_URL, { method: "POST", query: { command: "FINALIZE", media_id: mediaId, allow_async: true }, transactionId: false, continuation: true });
   const pollUntil = Date.now() + 10 * 60 * 1000;
   for (let i = 0;fin?.processing_info && i < 120 && Date.now() < pollUntil; i++) {
     const info = fin.processing_info;
@@ -2089,6 +2111,24 @@ var init_cli = __esm(() => {
         return deleteTweet(client, tweetId(positionals[0]));
       }
     },
+    scheduled: {
+      usage: "scheduled",
+      summary: "List your scheduled posts",
+      async run({ client }) {
+        return scheduledTweets(client);
+      }
+    },
+    unschedule: {
+      usage: "unschedule <scheduled_id>",
+      summary: "Cancel a scheduled post (the id printed by post --schedule)",
+      args: 1,
+      async run({ positionals, client }) {
+        const id = positionals[0];
+        if (!/^\d{1,25}$/.test(id))
+          throw new CliError("USAGE", "unschedule takes the numeric id printed by `post --schedule`.");
+        return unscheduleTweet(client, id);
+      }
+    },
     tweet: {
       usage: "tweet <id|url> [--replies 20]",
       summary: "A post with its thread context and replies",
@@ -2237,7 +2277,7 @@ var init_cli = __esm(() => {
         try {
           const web = await client.webInfo(true);
           const needed = [["UserByScreenName"], ["UserTweets"], ["SearchTimeline", "SearchByRawQuery"], ["TweetDetail"], ["CreateTweet"], ["FavoriteTweet"], ["CreateRetweet"], ["Followers", "followersQuery"], ["HomeTimeline"]];
-          const optional = [["DeleteTweet", "deleteTweetMutation"], ["CreateScheduledTweet"], ["UnfavoriteTweet", "likeButtonControlUnfavoriteMutation"]];
+          const optional = [["DeleteTweet", "deleteTweetMutation"], ["scheduleTweetCreateMutation", "CreateScheduledTweet"], ["UnfavoriteTweet", "likeButtonControlUnfavoriteMutation"]];
           const missing = (groups) => groups.filter((g) => !g.some((n) => web.operations[n])).map((g) => g.join(" / "));
           out.operations = { count: Object.keys(web.operations).length, scannedFiles: web.scannedFiles, missing: missing(needed), missingOptional: missing(optional) };
           out.transactionIdReady = !!web.tx;

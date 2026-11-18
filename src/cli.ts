@@ -234,6 +234,23 @@ const COMMANDS: Record<string, Command> = {
       return api.deleteTweet(client, tweetId(positionals[0]!));
     },
   },
+  scheduled: {
+    usage: "scheduled",
+    summary: "List your scheduled posts",
+    async run({ client }) {
+      return api.scheduledTweets(client);
+    },
+  },
+  unschedule: {
+    usage: "unschedule <scheduled_id>",
+    summary: "Cancel a scheduled post (the id printed by post --schedule)",
+    args: 1,
+    async run({ positionals, client }) {
+      const id = positionals[0]!;
+      if (!/^\d{1,25}$/.test(id)) throw new CliError("USAGE", "unschedule takes the numeric id printed by `post --schedule`.");
+      return api.unscheduleTweet(client, id);
+    },
+  },
   tweet: {
     usage: "tweet <id|url> [--replies 20]",
     summary: "A post with its thread context and replies",
@@ -388,7 +405,7 @@ const COMMANDS: Record<string, Command> = {
       try {
         const web = await client.webInfo(true);
         const needed = [["UserByScreenName"], ["UserTweets"], ["SearchTimeline", "SearchByRawQuery"], ["TweetDetail"], ["CreateTweet"], ["FavoriteTweet"], ["CreateRetweet"], ["Followers", "followersQuery"], ["HomeTimeline"]];
-        const optional = [["DeleteTweet", "deleteTweetMutation"], ["CreateScheduledTweet"], ["UnfavoriteTweet", "likeButtonControlUnfavoriteMutation"]];
+        const optional = [["DeleteTweet", "deleteTweetMutation"], ["scheduleTweetCreateMutation", "CreateScheduledTweet"], ["UnfavoriteTweet", "likeButtonControlUnfavoriteMutation"]];
         const missing = (groups: string[][]) => groups.filter((g) => !g.some((n) => web.operations[n])).map((g) => g.join(" / "));
         out.operations = { count: Object.keys(web.operations).length, scannedFiles: web.scannedFiles, missing: missing(needed), missingOptional: missing(optional) };
         out.transactionIdReady = !!web.tx;
