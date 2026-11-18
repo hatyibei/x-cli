@@ -121,4 +121,4 @@ bun test
 bun run check   # 型チェック + テスト + ビルド
 ```
 
-参考: [shoot16625/note-cli](https://github.com/shoot16625/note-cli)（構成を参考にしました）、XClientTransaction（transaction-id のアルゴリズム）
+参考: XClientTransaction（transaction-id のアルゴリズム）
