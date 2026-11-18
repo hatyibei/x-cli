@@ -1,0 +1,22 @@
+{
+  "name": "x-cli",
+  "version": "0.1.0",
+  "description": "Unofficial X (Twitter) CLI for posting, researching and engaging on X (for Claude Code, Codex and other AI coding agents)",
+  "type": "module",
+  "license": "MIT",
+  "keywords": ["x", "twitter", "skills", "claude-code", "codex", "gemini-cli", "cursor"],
+  "bin": { "x-cli": "dist/x-cli.js" },
+  "engines": { "bun": ">=1.2" },
+  "scripts": {
+    "build": "bun build src/bin.ts --target=bun --outfile=dist/x-cli.js && chmod +x dist/x-cli.js",
+    "dev": "bun src/bin.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun test && bun run build"
+  },
+  "files": ["dist", "skills", ".claude-plugin"],
+  "devDependencies": {
+    "@types/bun": "^1.2.9",
+    "typescript": "^5.8.3"
+  }
+}

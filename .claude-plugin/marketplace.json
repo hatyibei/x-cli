@@ -1,0 +1,12 @@
+{
+  "name": "x-cli",
+  "description": "X (Twitter) CLI and skills for Claude Code / Codex",
+  "owner": { "name": "x-cli" },
+  "plugins": [
+    {
+      "name": "x-cli",
+      "source": "./",
+      "description": "Post, research and engage on X (Twitter) from AI coding agents via a bundled unofficial-API CLI"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "x-cli",
+  "version": "0.1.0",
+  "description": "Post, research and engage on X (Twitter) from AI coding agents via a bundled unofficial-API CLI",
+  "license": "MIT",
+  "keywords": ["x", "twitter", "sns", "analytics"]
+}
